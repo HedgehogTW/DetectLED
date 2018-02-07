@@ -1,0 +1,41 @@
+# Add any directories, files, or patterns you don't want to be tracked by version control
+#project files
+*.old
+gnuploti*
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+Debug
+Release
+*.ilk
+.vs
+*.tlog
+x64/Release
+
+# Precompiled Headers
+*.gch
+*.pch
+*.ipch
+*.sdf
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+#*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+#*.lib
+
+# Executables
+*.exe
+*.out
+*.app
