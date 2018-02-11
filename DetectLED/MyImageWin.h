@@ -6,7 +6,7 @@
 #include <wx/msgdlg.h> 
 #include <wx/scrolwin.h> // Base class: wxScrolledWindow
 #include <wx/gdicmn.h>
-
+#include <opencv2/opencv.hpp>
 
 class MyImageWin : public wxScrolledWindow
 {
@@ -17,7 +17,8 @@ public:
 
 	~MyImageWin();
 
-    wxSize setImage(wxString image_path);
+//    wxSize setImage(wxString image_path);
+	void setImage(cv::Mat& mat);
     void OnDraw(wxDC& dc);
 private:	
     wxBitmap* m_pBitmap;

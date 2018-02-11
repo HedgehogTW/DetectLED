@@ -39,3 +39,5 @@ x64/Release
 *.exe
 *.out
 *.app
+.codelite/
+*.mkv
