@@ -21,6 +21,7 @@
 #include <wx/menu.h>
 #include <wx/toolbar.h>
 #include <wx/statusbr.h>
+#include <wx/timer.h>
 #if wxVERSION_NUMBER >= 2900
 #include <wx/persist.h>
 #include <wx/persist/toplevel.h>
@@ -52,11 +53,13 @@ protected:
     wxMenuItem* m_menuItem9;
     wxToolBar* m_mainToolbar;
     wxStatusBar* m_statusBar;
+    wxTimer* m_timerVideo;
 
 protected:
     virtual void OnFileOpen(wxCommandEvent& event) { event.Skip(); }
     virtual void OnExit(wxCommandEvent& event) { event.Skip(); }
     virtual void OnAbout(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnVideoTimer(wxTimerEvent& event) { event.Skip(); }
 
 public:
     MyImageWin* GetScrollWin() { return m_scrollWin; }
@@ -65,6 +68,7 @@ public:
     wxMenuBar* GetMenuBar() { return m_menuBar; }
     wxToolBar* GetMainToolbar() { return m_mainToolbar; }
     wxStatusBar* GetStatusBar() { return m_statusBar; }
+    wxTimer* GetTimerVideo() { return m_timerVideo; }
     MainFrameBaseClass(wxWindow* parent, wxWindowID id = wxID_ANY, const wxString& title = _("My Frame"), const wxPoint& pos = wxDefaultPosition, const wxSize& size = wxSize(500,300), long style = wxCAPTION|wxRESIZE_BORDER|wxMAXIMIZE_BOX|wxMINIMIZE_BOX|wxSYSTEM_MENU|wxCLOSE_BOX);
     virtual ~MainFrameBaseClass();
 };

@@ -9,7 +9,9 @@
 MainFrame *MainFrame::m_pThis=NULL;
 bool 		g_bPause;
 bool 		g_bStop;
-//wxDEFINE_EVENT(wxEVT_MYTHREAD_FINISHED, wxThreadEvent);
+cv::VideoCapture vidCap;
+cv::Mat img_input;
+
 MainFrame::MainFrame(wxWindow* parent)
     : MainFrameBaseClass(parent)
 {
@@ -83,6 +85,8 @@ void MainFrame::OnFileOpen(wxCommandEvent& event)
 		str.Printf("Open file:%s\n", pathName);
 		ShowMessage(str);
 		PlayVideoClip();
+		m_timerVideo->Start(10);
+		
 		
 //		OnFilePlay(event);
 		
@@ -94,7 +98,7 @@ void MainFrame::OnFileOpen(wxCommandEvent& event)
 
 void MainFrame::PlayVideoClip()
 {
-	cv::VideoCapture vidCap;
+
 	int waitTime = WAIT_TIME;
 	
 //	cv::Mat img_input;
@@ -104,7 +108,7 @@ void MainFrame::PlayVideoClip()
 		MainFrame::ShowMessage( "Load ... " + strVideoName + " ERROR\n");
 		return;
 	}
-
+	return;
 	double fps = vidCap.get(CV_CAP_PROP_FPS);
 	
 
@@ -140,8 +144,9 @@ void MainFrame::PlayVideoClip()
 		frameNumber++;
 
 		//if(cv::waitKey(1) >= 0) break;
-//		wxMilliSleep(30);
-//		Refresh();
+//		cv::waitKey(10);
+		wxMilliSleep(30);
+		Refresh();
 //		break;
 	}while(1);			
 }
@@ -173,4 +178,12 @@ void MainFrame::OnPaint(wxPaintEvent& event)
 //		m_scrollWin->setImage(img_input);
 	m_scrollWin->OnPaint(event);
 	ShowMessage( "OnPaint.\n");
+}
+void MainFrame::OnVideoTimer(wxTimerEvent& event)
+{
+//	ShowMessage( "OnVideoTimer.\n");
+	
+		vidCap >> img_input;
+		if (! img_input.empty()) 	
+		m_scrollWin->setImage(img_input);
 }

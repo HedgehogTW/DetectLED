@@ -70,6 +70,8 @@ MainFrameBaseClass::MainFrameBaseClass(wxWindow* parent, wxWindowID id, const wx
     m_statusBar->SetFieldsCount(1);
     this->SetStatusBar(m_statusBar);
     
+    m_timerVideo = new wxTimer;
+    
     SetName(wxT("MainFrameBaseClass"));
     SetSize(500,300);
     if (GetSizer()) {
@@ -91,6 +93,7 @@ MainFrameBaseClass::MainFrameBaseClass(wxWindow* parent, wxWindowID id, const wx
     this->Connect(m_menuItemOpen->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnFileOpen), NULL, this);
     this->Connect(m_menuItemExit->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnExit), NULL, this);
     this->Connect(m_menuItem9->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnAbout), NULL, this);
+    m_timerVideo->Connect(wxEVT_TIMER, wxTimerEventHandler(MainFrameBaseClass::OnVideoTimer), NULL, this);
     
 }
 
@@ -99,5 +102,9 @@ MainFrameBaseClass::~MainFrameBaseClass()
     this->Disconnect(m_menuItemOpen->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnFileOpen), NULL, this);
     this->Disconnect(m_menuItemExit->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnExit), NULL, this);
     this->Disconnect(m_menuItem9->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnAbout), NULL, this);
+    m_timerVideo->Disconnect(wxEVT_TIMER, wxTimerEventHandler(MainFrameBaseClass::OnVideoTimer), NULL, this);
     
+    m_timerVideo->Stop();
+    wxDELETE( m_timerVideo );
+
 }

@@ -63,13 +63,13 @@ void MyImageWin::setImage(cv::Mat& mat)
     if(ret) {
 		if(m_pBitmap)  delete m_pBitmap;
 		m_pBitmap = new wxBitmap( wxIm );	
-		int w = wxIm.GetWidth();
-		int h = wxIm.GetHeight();
-		SetVirtualSize( w, h );
-//		wxClientDC dc(this);
-//		if(m_pBitmap)	dc.DrawBitmap(*m_pBitmap, 0, 0, false);
+//		int w = wxIm.GetWidth();
+//		int h = wxIm.GetHeight();
+//		SetVirtualSize( w, h );
+		wxClientDC dc(this);
+		if(m_pBitmap)	dc.DrawBitmap(*m_pBitmap, 0, 0, false);
 
-		Refresh();
+//		Refresh();
 //		MainFrame::ShowMessage( "MyImageWin::setImage\n");
     }else wxLogMessage(wxT("wxIm.Create failed"));	
 

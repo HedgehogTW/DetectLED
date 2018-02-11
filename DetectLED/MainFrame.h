@@ -32,6 +32,7 @@ public:
     void OnAbout(wxCommandEvent& event);
 	static MainFrame* m_pThis;
 protected:
+    virtual void OnVideoTimer(wxTimerEvent& event);
     virtual void OnPaint(wxPaintEvent& event);
     virtual void OnFileStop(wxCommandEvent& event);
     virtual void OnFilePlay(wxCommandEvent& event);
