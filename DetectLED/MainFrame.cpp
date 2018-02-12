@@ -37,7 +37,7 @@ MainFrame::MainFrame(wxWindow* parent)
 		if(m_DataPath.back() != '/' && m_DataPath.back() != '\\')
 			m_DataPath += "/";
 	
-//	Bind(wxEVT_MYTHREAD_FINISHED, &MainFrame::OnThreadFinished, this);
+
 }
 
 MainFrame::~MainFrame()
@@ -78,17 +78,11 @@ void MainFrame::OnFileOpen(wxCommandEvent& event)
 		wxConfigBase *pConfig = wxConfigBase::Get();
 		pConfig->Write("/set/dataPath", wxString(m_DataPath));	
 
-//	    wxSize sz = m_scrollWin->setImage(pathName);
 	    wxString str;
-//	    str.Printf("W %d, H %d", sz.GetWidth(), sz.GetHeight());
-//	    m_statusBar->SetStatusText(str, 1);	
 		str.Printf("Open file:%s\n", pathName);
 		ShowMessage(str);
 		PlayVideoClip();
 		m_timerVideo->Start(10);
-		
-		
-//		OnFilePlay(event);
 		
 	}
 	// Clean up after ourselves
@@ -99,8 +93,6 @@ void MainFrame::OnFileOpen(wxCommandEvent& event)
 void MainFrame::PlayVideoClip()
 {
 
-	int waitTime = WAIT_TIME;
-	
 //	cv::Mat img_input;
 	std::string 	strVideoName  = m_filename.ToStdString();
 	vidCap.open(strVideoName);
@@ -108,47 +100,23 @@ void MainFrame::PlayVideoClip()
 		MainFrame::ShowMessage( "Load ... " + strVideoName + " ERROR\n");
 		return;
 	}
-	return;
-	double fps = vidCap.get(CV_CAP_PROP_FPS);
-	
 
-	cv::Mat img_input;
-	int frameNumber = 0;
+	m_fps = vidCap.get(CV_CAP_PROP_FPS);
+
 	g_bPause = false;
-//	while (frameNumber<10) {
-//		vidCap >> img_input;	
-//		frameNumber	++;
-//	}
-	do{
-		if(g_bPause)  {
-			g_bPause = false;
-			cv::waitKey(0);
-		}		
-		if(g_bStop)  break;
+	g_bStop = false;
+	vidCap >> img_input;
+	if (! img_input.empty()) {
+		m_nWidth = img_input.cols;
+		m_nHeight = img_input.rows;
 		
-		vidCap >> img_input;
-		if (img_input.empty()) break;	
-		m_scrollWin->setImage(img_input);
-		//cv::imshow("Video", img_input);
-		
-		
-		float sec = frameNumber /fps;
-		int mm = sec / 60;
-		int ss = sec - mm*60;
 		wxString str;
-		str.Printf("Frame No. %d, %02d:%02d", frameNumber, mm, ss);
+	    str.Printf("%d x %d, %.2f fps", m_nWidth, m_nHeight, m_fps);
+	    m_statusBar->SetStatusText(str, 1);	
+	}
+	m_frameNumber = 1;
+	return;
 		
-		wxStatusBar* statusBar = MainFrame::m_pThis->GetStatusBar() ;
-		statusBar->SetStatusText(str, 1);
-		
-		frameNumber++;
-
-		//if(cv::waitKey(1) >= 0) break;
-//		cv::waitKey(10);
-		wxMilliSleep(30);
-		Refresh();
-//		break;
-	}while(1);			
 }
 
 
@@ -181,9 +149,18 @@ void MainFrame::OnPaint(wxPaintEvent& event)
 }
 void MainFrame::OnVideoTimer(wxTimerEvent& event)
 {
-//	ShowMessage( "OnVideoTimer.\n");
+	vidCap >> img_input;
+	if (img_input.empty()) 	return;
+	m_scrollWin->setImage(img_input);
 	
-		vidCap >> img_input;
-		if (! img_input.empty()) 	
-		m_scrollWin->setImage(img_input);
+	float sec = m_frameNumber /m_fps;
+	int mm = sec / 60;
+	int ss = sec - mm*60;
+	wxString str;
+	str.Printf("Frame No. %d, %02d:%02d", m_frameNumber, mm, ss);
+	
+	wxStatusBar* statusBar = MainFrame::m_pThis->GetStatusBar() ;
+	statusBar->SetStatusText(str, 2);
+
+	m_frameNumber++;
 }

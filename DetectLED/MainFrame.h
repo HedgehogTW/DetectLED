@@ -27,6 +27,10 @@ public:
 	
 	wxString m_filename;
 	std::string 	m_DataPath;
+	int 	m_frameNumber;
+	int 	m_nWidth;
+	int		m_nHeight;
+	double  m_fps;
 	
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
