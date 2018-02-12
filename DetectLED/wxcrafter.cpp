@@ -48,7 +48,7 @@ MainFrameBaseClass::MainFrameBaseClass(wxWindow* parent, wxWindowID id, const wx
     m_menuFile = new wxMenu();
     m_menuBar->Append(m_menuFile, _("File"));
     
-    m_menuItemOpen = new wxMenuItem(m_menuFile, wxID_OPEN, _("Item7"), wxT(""), wxITEM_NORMAL);
+    m_menuItemOpen = new wxMenuItem(m_menuFile, wxID_OPEN, _("Open"), wxT(""), wxITEM_NORMAL);
     m_menuFile->Append(m_menuItemOpen);
     
     m_menuItemExit = new wxMenuItem(m_menuFile, wxID_EXIT, _("Exit\tAlt-X"), _("Quit"), wxITEM_NORMAL);

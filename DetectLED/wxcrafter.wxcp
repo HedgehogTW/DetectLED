@@ -501,7 +501,7 @@
           }, {
            "type": "string",
            "m_label": "Label:",
-           "m_value": "Item7"
+           "m_value": "Open"
           }, {
            "type": "string",
            "m_label": "Shortcut:",

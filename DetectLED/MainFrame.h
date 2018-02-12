@@ -1,10 +1,11 @@
 #ifndef MAINFRAME_H
 #define MAINFRAME_H
 #include "wxcrafter.h"
-//#include <wx/thread.h>
+#include <wx/filehistory.h>
 
-//wxDECLARE_EVENT(wxEVT_MYTHREAD_FINISHED, wxThreadEvent);
 
+using namespace std;
+using namespace cv;
 class MainFrame : public MainFrameBaseClass
 {
 public:
@@ -24,7 +25,11 @@ public:
 		m_pThis->m_richTextMsg->ShowPosition(lastPos);
 	}
 	void PlayVideoClip();
-	
+	void draw_grid(cv::Mat &img);
+	void img_process(cv::Mat &img);
+
+	wxFileHistory*    m_FileHistory;
+
 	wxString m_filename;
 	std::string 	m_DataPath;
 	int 	m_frameNumber;
@@ -34,6 +39,7 @@ public:
 	
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
+	void OnMRUFile(wxCommandEvent& event);
 	static MainFrame* m_pThis;
 protected:
     virtual void OnVideoTimer(wxTimerEvent& event);
