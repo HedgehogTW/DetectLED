@@ -6,6 +6,14 @@
 
 using namespace std;
 using namespace cv;
+
+class Blob
+{
+public:
+	cv::Point coord;
+	int hue;
+};
+
 class MainFrame : public MainFrameBaseClass
 {
 public:
@@ -27,21 +35,25 @@ public:
 	void PlayVideoClip();
 	void draw_grid(cv::Mat &img);
 	void img_process(cv::Mat &img);
+	void find_regions(cv::Mat &img, vector<vector<cv::Point>>& contours);
+	void find_color(vector<vector<cv::Point>>&contours, cv::Mat &hue);
 
+	vector<Blob>  m_vBlob;
 	wxFileHistory*    m_FileHistory;
-
 	wxString m_filename;
 	std::string 	m_DataPath;
 	int 	m_frameNumber;
 	int 	m_nWidth;
 	int		m_nHeight;
 	double  m_fps;
+	int 	m_num_grid;
 	
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
 	void OnMRUFile(wxCommandEvent& event);
 	static MainFrame* m_pThis;
 protected:
+    virtual void OnClose(wxCloseEvent& event);
     virtual void OnVideoTimer(wxTimerEvent& event);
     virtual void OnPaint(wxPaintEvent& event);
     virtual void OnFileStop(wxCommandEvent& event);
