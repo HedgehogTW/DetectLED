@@ -51,6 +51,12 @@ MainFrameBaseClass::MainFrameBaseClass(wxWindow* parent, wxWindowID id, const wx
     m_menuItemOpen = new wxMenuItem(m_menuFile, wxID_OPEN, _("Open"), wxT(""), wxITEM_NORMAL);
     m_menuFile->Append(m_menuItemOpen);
     
+    m_menuItemPlay = new wxMenuItem(m_menuFile, wxID_PLAY, _("Play"), wxT(""), wxITEM_NORMAL);
+    m_menuFile->Append(m_menuItemPlay);
+    
+    m_menuItemPause = new wxMenuItem(m_menuFile, wxID_PAUSE, _("Pause"), wxT(""), wxITEM_NORMAL);
+    m_menuFile->Append(m_menuItemPause);
+    
     m_menuItemExit = new wxMenuItem(m_menuFile, wxID_EXIT, _("Exit\tAlt-X"), _("Quit"), wxITEM_NORMAL);
     m_menuFile->Append(m_menuItemExit);
     
@@ -61,9 +67,13 @@ MainFrameBaseClass::MainFrameBaseClass(wxWindow* parent, wxWindowID id, const wx
     m_name8->Append(m_menuItem9);
     
     m_mainToolbar = this->CreateToolBar(wxTB_FLAT, wxID_ANY);
-    m_mainToolbar->SetToolBitmapSize(wxSize(16,16));
+    m_mainToolbar->SetToolBitmapSize(wxSize(32,32));
     
     m_mainToolbar->AddTool(wxID_OPEN, _("Open"), wxArtProvider::GetBitmap(wxART_FILE_OPEN, wxART_TOOLBAR, wxDefaultSize), wxNullBitmap, wxITEM_NORMAL, wxT(""), wxT(""), NULL);
+    
+    m_mainToolbar->AddTool(wxID_PLAY, _("Play"), wxXmlResource::Get()->LoadBitmap(wxT("play")), wxNullBitmap, wxITEM_NORMAL, wxT(""), wxT(""), NULL);
+    
+    m_mainToolbar->AddTool(wxID_PAUSE, _("Pause"), wxXmlResource::Get()->LoadBitmap(wxT("pause")), wxNullBitmap, wxITEM_NORMAL, wxT(""), wxT(""), NULL);
     m_mainToolbar->Realize();
     
     m_statusBar = new wxStatusBar(this, wxID_ANY, wxSTB_DEFAULT_STYLE);
@@ -90,7 +100,10 @@ MainFrameBaseClass::MainFrameBaseClass(wxWindow* parent, wxWindowID id, const wx
     }
 #endif
     // Connect events
+    this->Connect(wxEVT_CLOSE_WINDOW, wxCloseEventHandler(MainFrameBaseClass::OnClose), NULL, this);
     this->Connect(m_menuItemOpen->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnFileOpen), NULL, this);
+    this->Connect(m_menuItemPlay->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnFilePlay), NULL, this);
+    this->Connect(m_menuItemPause->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnFilePause), NULL, this);
     this->Connect(m_menuItemExit->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnExit), NULL, this);
     this->Connect(m_menuItem9->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnAbout), NULL, this);
     m_timerVideo->Connect(wxEVT_TIMER, wxTimerEventHandler(MainFrameBaseClass::OnVideoTimer), NULL, this);
@@ -99,7 +112,10 @@ MainFrameBaseClass::MainFrameBaseClass(wxWindow* parent, wxWindowID id, const wx
 
 MainFrameBaseClass::~MainFrameBaseClass()
 {
+    this->Disconnect(wxEVT_CLOSE_WINDOW, wxCloseEventHandler(MainFrameBaseClass::OnClose), NULL, this);
     this->Disconnect(m_menuItemOpen->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnFileOpen), NULL, this);
+    this->Disconnect(m_menuItemPlay->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnFilePlay), NULL, this);
+    this->Disconnect(m_menuItemPause->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnFilePause), NULL, this);
     this->Disconnect(m_menuItemExit->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnExit), NULL, this);
     this->Disconnect(m_menuItem9->GetId(), wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrameBaseClass::OnAbout), NULL, this);
     m_timerVideo->Disconnect(wxEVT_TIMER, wxTimerEventHandler(MainFrameBaseClass::OnVideoTimer), NULL, this);

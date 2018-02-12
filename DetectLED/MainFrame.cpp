@@ -8,18 +8,23 @@
 #define WAIT_TIME  10
 MainFrame *MainFrame::m_pThis=NULL;
 bool 		g_bPause;
-bool 		g_bStop;
+bool 		g_bPlay;
 cv::VideoCapture vidCap;
 cv::Mat img_input;
+
 
 MainFrame::MainFrame(wxWindow* parent)
     : MainFrameBaseClass(parent)
 {
 	m_pThis = this;
-	int statusWidth[4] = {250, 150, 150};
-    m_statusBar->SetFieldsCount(3, statusWidth);
+	int statusWidth[4] = {200, 130, 130, 100};
+    m_statusBar->SetFieldsCount(4, statusWidth);
 	SetSize(700, 760);
 	Center();	
+	
+	g_bPause = false;
+	g_bPlay = true;
+
 	
 	ShowMessage("Hello.... \n");	
 
@@ -49,7 +54,7 @@ MainFrame::MainFrame(wxWindow* parent)
 
 MainFrame::~MainFrame()
 {
-	g_bStop = true;
+//	g_bStop = true;
 	wxConfigBase *pConfig = wxConfigBase::Get();
 	pConfig->Write("/set/dataPath", wxString(m_DataPath));	
 	
@@ -129,7 +134,7 @@ void MainFrame::PlayVideoClip()
 	m_fps = vidCap.get(CV_CAP_PROP_FPS);
 
 	g_bPause = false;
-	g_bStop = false;
+//	g_bStop = false;
 	vidCap >> img_input;
 	if (! img_input.empty()) {
 		m_nWidth = img_input.cols;
@@ -141,7 +146,7 @@ void MainFrame::PlayVideoClip()
 	}
 	m_frameNumber = 1;
 	m_timerVideo->Start(10);
-	
+	m_vBlob.clear();	
 	return;
 		
 }
@@ -149,10 +154,7 @@ void MainFrame::PlayVideoClip()
 
 void MainFrame::OnFilePlay(wxCommandEvent& event)
 {
-//	if(GetThread()==NULL)  return;
-//	if (GetThread()->IsAlive()){
-//		GetThread()->Resume();
-//	}		
+	g_bPlay = true;		
 }
 void MainFrame::OnFileStop(wxCommandEvent& event)
 {
@@ -162,10 +164,7 @@ void MainFrame::OnFileStop(wxCommandEvent& event)
 }
 void MainFrame::OnFilePause(wxCommandEvent& event)
 {
-//	if(GetThread()==NULL)  return;
-//	if(GetThread()->IsAlive()) {
-//		GetThread()->Pause();
-//	}
+	g_bPlay = false;	
 }
 void MainFrame::OnPaint(wxPaintEvent& event)
 {
@@ -176,6 +175,7 @@ void MainFrame::OnPaint(wxPaintEvent& event)
 }
 void MainFrame::OnVideoTimer(wxTimerEvent& event)
 {
+	if(g_bPlay ==false) return;
 	vidCap >> img_input;
 	if (img_input.empty()) 	return;
 	
@@ -203,30 +203,82 @@ void MainFrame::img_process(cv::Mat &img)
 	cv::cvtColor(img, hsv, CV_BGR2HSV);
 	std::vector<cv::Mat> planes;
 	cv::split(hsv, planes);
-	cv::imshow("hue", planes[0]);
-	cv::imshow("Value", planes[2]);
+//	cv::imshow("hue", planes[0]);
+//	cv::imshow("Value", planes[2]);
 	
-	cv::threshold(planes[2], bin, 220, 255, cv::THRESH_BINARY );
+	cv::threshold(planes[2], bin, 240, 255, cv::THRESH_BINARY );
 	cv::medianBlur(bin, bin, 7);
 //	cv::Mat st = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5));
 //	cv::morphologyEx(bin, bin, cv::MORPH_OPEN, st);
 	//// find maxima CC
-	vector<vector<cv::Point> > contours;
+	vector<vector<cv::Point>> contours;
+	find_regions(bin, contours);
+	find_color(contours, planes[0]);
+
+//	cv::imshow("binary", bin);
+}
+void MainFrame::find_color(vector<vector<cv::Point>>&contours, cv::Mat &hue)
+{
+	wxString str;
+	
+	int numCont = contours.size();
+	m_vBlob.resize(numCont);
+	for(int j=0; j<contours.size(); j++) {
+		int h = 0;
+		cv::Point coord = Point(0,0);
+		vector<cv::Point>& con = contours[j];
+		for(int i=0; i<con.size(); i++) {
+//			h += hue.at<uchar>(con[i]);
+			coord += con[i];
+		}
+//		h /= con.size();
+		coord.x = coord.x / con.size();
+		coord.y = coord.y / con.size();
+		h = hue.at<uchar>(coord) * 2;
+		
+		Blob blob;
+		blob.coord = coord;
+		blob.hue = h;
+		m_vBlob[j] = blob;
+		
+		str.Printf("CC %d, %d  (%d, %d)\n", j, h, coord.x, coord.y);
+		ShowMessage(str);
+	}
+}
+
+void MainFrame::find_regions(cv::Mat &img, vector<vector<cv::Point>>& contours)
+{
+//	vector<vector<cv::Point> > contours;
 	vector<Vec4i> hierarchy;
 	int mode = CV_RETR_LIST;
 	int method = CV_CHAIN_APPROX_NONE;
-	cv::Mat m = bin.clone();
+	cv::Mat m = img.clone();
 	findContours(m, contours, hierarchy, mode, method);
-	
-	cv::imshow("binary", bin);
+	int areaLower = 50;
+	int areaUpper = 1500;
+
+	int numCont = contours.size();
+	for(int j=0; j<contours.size(); j++) {
+		float area = cv::contourArea(contours[j]);
+		if(area < areaLower || area > areaUpper) {
+			contours.erase (contours.begin()+j);
+			j--;
+			continue;			
+		}
+	}
+	cv::drawContours(img_input, contours, -1, cv::Scalar(0,255,0), 2 );	
+	numCont = contours.size();
+	wxString str;
+	str.Printf("CC %d", numCont);
+	m_statusBar->SetStatusText(str, 3);
 }
 void MainFrame::draw_grid(cv::Mat &img)
 {
-	int num_grid = 10;
-	int xgap = m_nWidth / num_grid ;
-	int ygap = m_nHeight / num_grid ;
+	m_num_grid = 9;
+	int xgap = m_nWidth / m_num_grid ;
+	int ygap = m_nHeight / m_num_grid ;
 	char  box_text[10];
-	for(int i=0; i<num_grid; i++) {
+	for(int i=0; i<m_num_grid; i++) {
 		cv::line(img, cv::Point(xgap * i, 0), cv::Point(xgap * i, m_nHeight), cv::Scalar(0, 255, 255), 1);
 		cv::line(img, cv::Point(0, ygap * i), cv::Point(m_nWidth, ygap * i), cv::Scalar(0, 255, 255), 1);
 		
@@ -235,4 +287,9 @@ void MainFrame::draw_grid(cv::Mat &img)
 		sprintf(box_text, "%c", i+'A');
 		cv::putText(img, box_text, cv::Point(10, ygap * i+30), cv::FONT_HERSHEY_DUPLEX, 0.6, CV_RGB(0,255,0), 1.0);		
 	}	
+}
+void MainFrame::OnClose(wxCloseEvent& event)
+{
+	m_timerVideo->Stop();
+	Destroy(); 
 }

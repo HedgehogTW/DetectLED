@@ -41,6 +41,11 @@
 
 class MainFrameBaseClass : public wxFrame
 {
+public:
+    enum {
+        wxID_PAUSE = 10001,
+        wxID_PLAY = 10002,
+    };
 protected:
     MyImageWin* m_scrollWin;
     wxPanel* m_mainPanel;
@@ -48,6 +53,8 @@ protected:
     wxMenuBar* m_menuBar;
     wxMenu* m_menuFile;
     wxMenuItem* m_menuItemOpen;
+    wxMenuItem* m_menuItemPlay;
+    wxMenuItem* m_menuItemPause;
     wxMenuItem* m_menuItemExit;
     wxMenu* m_name8;
     wxMenuItem* m_menuItem9;
@@ -56,7 +63,10 @@ protected:
     wxTimer* m_timerVideo;
 
 protected:
+    virtual void OnClose(wxCloseEvent& event) { event.Skip(); }
     virtual void OnFileOpen(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnFilePlay(wxCommandEvent& event) { event.Skip(); }
+    virtual void OnFilePause(wxCommandEvent& event) { event.Skip(); }
     virtual void OnExit(wxCommandEvent& event) { event.Skip(); }
     virtual void OnAbout(wxCommandEvent& event) { event.Skip(); }
     virtual void OnVideoTimer(wxTimerEvent& event) { event.Skip(); }
