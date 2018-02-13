@@ -6,12 +6,14 @@
 #include <opencv2/opencv.hpp>
 
 #define WAIT_TIME  10
+#define BLOB_DIST  20
 MainFrame *MainFrame::m_pThis=NULL;
 bool 		g_bPause;
 bool 		g_bPlay;
 cv::VideoCapture vidCap;
 cv::Mat img_input;
 
+int blob_id = 0;
 
 MainFrame::MainFrame(wxWindow* parent)
     : MainFrameBaseClass(parent)
@@ -54,7 +56,7 @@ MainFrame::MainFrame(wxWindow* parent)
 
 MainFrame::~MainFrame()
 {
-//	g_bStop = true;
+	m_vBlob.clear();	
 	wxConfigBase *pConfig = wxConfigBase::Get();
 	pConfig->Write("/set/dataPath", wxString(m_DataPath));	
 	
@@ -145,8 +147,9 @@ void MainFrame::PlayVideoClip()
 	    m_statusBar->SetStatusText(str, 1);	
 	}
 	m_frameNumber = 1;
-	m_timerVideo->Start(10);
+	m_timerVideo->Start(20);
 	m_vBlob.clear();	
+	blob_id = 0;
 	return;
 		
 }
@@ -208,45 +211,90 @@ void MainFrame::img_process(cv::Mat &img)
 	
 	cv::threshold(planes[2], bin, 240, 255, cv::THRESH_BINARY );
 	cv::medianBlur(bin, bin, 7);
+//	cv::imshow("binary", bin);
 //	cv::Mat st = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5,5));
 //	cv::morphologyEx(bin, bin, cv::MORPH_OPEN, st);
 	//// find maxima CC
 	vector<vector<cv::Point>> contours;
-	find_regions(bin, contours);
-	find_color(contours, planes[0]);
+	int numBlobs = find_blobs(bin, contours);
+	if(numBlobs <= 0) {
+		for(int b=0; b<m_vBlob.size(); b++)
+			m_vBlob[b].willRemove = true;
+		remove_blobs();
+	}else
+		identify_blobs(contours, planes[0]);
+		
 
-//	cv::imshow("binary", bin);
+
 }
-void MainFrame::find_color(vector<vector<cv::Point>>&contours, cv::Mat &hue)
+void MainFrame::identify_blobs(vector<vector<cv::Point>>&contours, cv::Mat &hue)
+{
+	wxString str;
+	int h;
+	int numBlobs = m_vBlob.size(); 
+	
+	for(int b=0; b<numBlobs; b++)
+		m_vBlob[b].willRemove = true;
+		
+	int numCont = contours.size();		
+	for(int j=0; j<numCont; j++) {
+		cv::Point coord = Point(0,0);
+		vector<cv::Point>& con = contours[j];
+		int h = 0;
+		for(int i=0; i<con.size(); i++) {
+			coord += con[i];
+			h += hue.at<uchar>(con[i]) * 2;
+		}
+		coord.x = coord.x / con.size();
+		coord.y = coord.y / con.size();
+		h /= con.size();	
+		bool bFound = false;
+		for(int b=0; b<numBlobs; b++){
+			Point diff_pt = coord - m_vBlob[b].coord;
+			double dist = norm(diff_pt);
+			if(dist < BLOB_DIST) {
+				m_vBlob[b].hue = h;
+				m_vBlob[b].coord = coord;
+				m_vBlob[b].counter ++;
+				m_vBlob[b].willRemove = false;
+				bFound = true;
+				
+				if(m_vBlob[b].counter==(int)m_fps){
+					m_vBlob[b].bOn = true;
+					str.Printf("LED ON hue %d--(%d, %d) %d\n", h, coord.x, coord.y, m_vBlob[b].id);
+					ShowMessage(str);				
+				}
+				break;
+			}			
+		}
+		if(bFound == false) {				
+			Blob blob(coord, h);
+			m_vBlob.push_back(blob);
+//			ShowMessage("add %d\n", blob.id);
+		}
+	}
+	
+	
+}
+void MainFrame::remove_blobs()
 {
 	wxString str;
 	
-	int numCont = contours.size();
-	m_vBlob.resize(numCont);
-	for(int j=0; j<contours.size(); j++) {
-		int h = 0;
-		cv::Point coord = Point(0,0);
-		vector<cv::Point>& con = contours[j];
-		for(int i=0; i<con.size(); i++) {
-//			h += hue.at<uchar>(con[i]);
-			coord += con[i];
+	for(int j=0; j<m_vBlob.size(); j++) {
+		if(m_vBlob[j].willRemove) {
+			if(m_vBlob[j].bOn){
+				str.Printf("LED OFF hue %d--(%d, %d), %d\n", m_vBlob[j].hue, m_vBlob[j].coord.x, m_vBlob[j].coord.y, m_vBlob[j].id);
+				ShowMessage(str);			
+			}
+//			ShowMessage("remove %d\n", m_vBlob[j].id);	
+			m_vBlob.erase (m_vBlob.begin()+j);
+			j--;
+			continue;			
 		}
-//		h /= con.size();
-		coord.x = coord.x / con.size();
-		coord.y = coord.y / con.size();
-		h = hue.at<uchar>(coord) * 2;
-		
-		Blob blob;
-		blob.coord = coord;
-		blob.hue = h;
-		m_vBlob[j] = blob;
-		
-		str.Printf("CC %d, %d  (%d, %d)\n", j, h, coord.x, coord.y);
-		ShowMessage(str);
 	}
 }
 
-void MainFrame::find_regions(cv::Mat &img, vector<vector<cv::Point>>& contours)
+int MainFrame::find_blobs(cv::Mat &img, vector<vector<cv::Point>>& contours)
 {
 //	vector<vector<cv::Point> > contours;
 	vector<Vec4i> hierarchy;
@@ -257,7 +305,6 @@ void MainFrame::find_regions(cv::Mat &img, vector<vector<cv::Point>>& contours)
 	int areaLower = 50;
 	int areaUpper = 1500;
 
-	int numCont = contours.size();
 	for(int j=0; j<contours.size(); j++) {
 		float area = cv::contourArea(contours[j]);
 		if(area < areaLower || area > areaUpper) {
@@ -267,10 +314,12 @@ void MainFrame::find_regions(cv::Mat &img, vector<vector<cv::Point>>& contours)
 		}
 	}
 	cv::drawContours(img_input, contours, -1, cv::Scalar(0,255,0), 2 );	
-	numCont = contours.size();
+	int numCont = contours.size();
 	wxString str;
 	str.Printf("CC %d", numCont);
 	m_statusBar->SetStatusText(str, 3);
+	
+	return numCont;
 }
 void MainFrame::draw_grid(cv::Mat &img)
 {

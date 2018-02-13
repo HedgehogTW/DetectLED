@@ -7,11 +7,33 @@
 using namespace std;
 using namespace cv;
 
+extern int blob_id;
 class Blob
 {
 public:
+	
+	Blob() { 
+		coord = Point(0,0);
+		hue = 0;
+		counter = 0;
+		willRemove = false;
+		bOn = false;
+		id = 0;
+	}
+	Blob(cv::Point c, int h) {
+		coord = c;
+		hue = h;
+		counter = 0;
+		willRemove = false;
+		bOn = false;
+		id = ++blob_id;
+	}
+	int id;
 	cv::Point coord;
 	int hue;
+	int counter;
+	bool willRemove;
+	bool bOn;
 };
 
 class MainFrame : public MainFrameBaseClass
@@ -35,8 +57,10 @@ public:
 	void PlayVideoClip();
 	void draw_grid(cv::Mat &img);
 	void img_process(cv::Mat &img);
-	void find_regions(cv::Mat &img, vector<vector<cv::Point>>& contours);
-	void find_color(vector<vector<cv::Point>>&contours, cv::Mat &hue);
+	int  find_blobs(cv::Mat &img, vector<vector<cv::Point>>& contours);
+	void identify_blobs(vector<vector<cv::Point>>&contours, cv::Mat &hue);
+	void remove_blobs();
+
 
 	vector<Blob>  m_vBlob;
 	wxFileHistory*    m_FileHistory;
