@@ -14,7 +14,7 @@ cv::VideoCapture vidCap;
 cv::Mat img_input;
 
 int blob_id = 0;
-
+//FILE *fp = fopen("_hist.csv", "w");
 MainFrame::MainFrame(wxWindow* parent)
     : MainFrameBaseClass(parent)
 {
@@ -26,7 +26,7 @@ MainFrame::MainFrame(wxWindow* parent)
 	
 	g_bPause = false;
 	g_bPlay = true;
-
+	m_num_grid = 8;
 	
 	ShowMessage("Hello.... \n");	
 
@@ -52,6 +52,16 @@ MainFrame::MainFrame(wxWindow* parent)
 	
     this->Connect(wxID_FILE1, wxID_FILE9, wxEVT_COMMAND_MENU_SELECTED, wxCommandEventHandler(MainFrame::OnMRUFile), NULL, this);
 
+	int ksize = 17; // shuold be odd
+	m_nKnlBW =ksize/2;
+	m_kernel.resize(2*m_nKnlBW + 1); 
+	Mat mKernel = getGaussianKernel(ksize, -1);
+	for(int i=-m_nKnlBW; i<=m_nKnlBW; i++) {
+//		float x = (float)i/m_nKnlBW;
+//		m_kernel[i+m_nKnlBW] = (1.0-x*x)/ (m_nKnlBW);    或者後面再 /= m_frameCount*h
+		m_kernel[i+m_nKnlBW] = mKernel.at<double>(i+m_nKnlBW, 0);
+//		ShowMessage("%.4f ", m_kernel[i+m_nKnlBW]);
+	}	
 }
 
 MainFrame::~MainFrame()
@@ -141,7 +151,8 @@ void MainFrame::PlayVideoClip()
 	if (! img_input.empty()) {
 		m_nWidth = img_input.cols;
 		m_nHeight = img_input.rows;
-		
+		m_xgap = m_nWidth / m_num_grid ;
+		m_ygap = m_nHeight / m_num_grid ;
 		wxString str;
 	    str.Printf("%d x %d, %.2f fps", m_nWidth, m_nHeight, m_fps);
 	    m_statusBar->SetStatusText(str, 1);	
@@ -168,6 +179,7 @@ void MainFrame::OnFileStop(wxCommandEvent& event)
 void MainFrame::OnFilePause(wxCommandEvent& event)
 {
 	g_bPlay = false;	
+//	fclose(fp);
 }
 void MainFrame::OnPaint(wxPaintEvent& event)
 {
@@ -230,6 +242,7 @@ void MainFrame::img_process(cv::Mat &img)
 void MainFrame::identify_blobs(vector<vector<cv::Point>>&contours, cv::Mat &hue)
 {
 	wxString str;
+	char  strPos[10];
 	int h;
 	int numBlobs = m_vBlob.size(); 
 	
@@ -243,11 +256,11 @@ void MainFrame::identify_blobs(vector<vector<cv::Point>>&contours, cv::Mat &hue)
 		int h = 0;
 		for(int i=0; i<con.size(); i++) {
 			coord += con[i];
-			h += hue.at<uchar>(con[i]) * 2;
+//			h += hue.at<uchar>(con[i]) * 2;
 		}
 		coord.x = coord.x / con.size();
 		coord.y = coord.y / con.size();
-		h /= con.size();	
+		h = get_hue(hue, contours, j);	
 		bool bFound = false;
 		for(int b=0; b<numBlobs; b++){
 			Point diff_pt = coord - m_vBlob[b].coord;
@@ -257,11 +270,14 @@ void MainFrame::identify_blobs(vector<vector<cv::Point>>&contours, cv::Mat &hue)
 				m_vBlob[b].coord = coord;
 				m_vBlob[b].counter ++;
 				m_vBlob[b].willRemove = false;
+				m_vBlob[b].detect_color();
+				sprintf(strPos, "%c%d", 'A'+coord.y/ m_ygap, coord.x/ m_xgap);
+				m_vBlob[b].position = strPos;
 				bFound = true;
 				
 				if(m_vBlob[b].counter==(int)m_fps){
 					m_vBlob[b].bOn = true;
-					str.Printf("LED ON hue %d--(%d, %d) %d\n", h, coord.x, coord.y, m_vBlob[b].id);
+					str.Printf("LED ON hue %d--%s, %s\n", h, m_vBlob[b].color, m_vBlob[b].position);
 					ShowMessage(str);				
 				}
 				break;
@@ -276,6 +292,64 @@ void MainFrame::identify_blobs(vector<vector<cv::Point>>&contours, cv::Mat &hue)
 	
 	
 }
+int MainFrame::get_hue(cv::Mat &hue, vector<vector<cv::Point>>& contours, int idx)
+{
+	Mat mMask = Mat::zeros( hue.size(), CV_8UC1);
+	cv::drawContours(mMask, contours, idx, cv::Scalar(255,255,255), CV_FILLED );	
+	
+	// Quantize the hue to 30 levels and the saturation to 32 levels
+	int hbins = 180;//, sbins = 32;
+	int histSize[] = {hbins}; //, sbins
+	// hue varies from 0 to 179, see cvtColor
+	float hranges[] = { 0, 180 };
+	// saturation varies from 0 (black-gray-white) to 255 (pure spectrum color)
+	// float sranges[] = { 0, 256 };
+	const float* ranges[] = { hranges}; //, sranges };
+	Mat hist, kde;
+	// we compute the histogram from the 0-th and 1-st channels
+	int channels[] = {0}; //, 1};
+	calcHist( &hue, 1, channels, mMask, // do not use mask
+		hist, 1, histSize, ranges,
+		true, // the histogram is uniform
+		false );
+		
+	kde = Mat::zeros( hist.size(), CV_32F);
+	for( int h = 0; h < hbins; h++ ){
+		float binVal = hist.at<float>(h, 0);
+		for(int x=-m_nKnlBW; x<=m_nKnlBW; x++) {
+			float p = m_kernel[x +m_nKnlBW];
+			p *= binVal;	
+			if(h+x <0) 
+				kde.at<float>(h+x+hbins, 0) += p;
+			else if(h+x >hbins)
+				kde.at<float>(h+x-hbins, 0) += p;
+			else
+				kde.at<float>(h+x, 0) += p;
+			
+		}
+	} 
+	Point  maxIdx;
+//	minMaxLoc(hist, 0, 0, 0, &maxIdx);
+//	int imax = maxIdx.y ;
+//	fprintf(fp, "%d,", imax);
+//	for( int h = 0; h < hbins; h++ ){
+//		float binVal = hist.at<float>(h, 0);	
+//		fprintf(fp, "%.2f,", binVal);
+//	}
+//	fprintf(fp, "\n");
+	
+	minMaxLoc(kde, 0, 0, 0, &maxIdx);
+	int imax = maxIdx.y *2;
+//	fprintf(fp, "%d,", imax);
+//	
+//	for( int h = 0; h < hbins; h++ ){
+//		float binKde = kde.at<float>(h, 0);
+//		fprintf(fp, "%.2f,", binKde);
+//	}		
+//	fprintf(fp, "\n");
+
+	return imax;
+}
 void MainFrame::remove_blobs()
 {
 	wxString str;
@@ -283,7 +357,8 @@ void MainFrame::remove_blobs()
 	for(int j=0; j<m_vBlob.size(); j++) {
 		if(m_vBlob[j].willRemove) {
 			if(m_vBlob[j].bOn){
-				str.Printf("LED OFF hue %d--(%d, %d), %d\n", m_vBlob[j].hue, m_vBlob[j].coord.x, m_vBlob[j].coord.y, m_vBlob[j].id);
+				str.Printf("LED OFF hue %d--%s, %s\n", 
+					m_vBlob[j].hue, m_vBlob[j].color, m_vBlob[j].position);
 				ShowMessage(str);			
 			}
 //			ShowMessage("remove %d\n", m_vBlob[j].id);	
@@ -313,7 +388,7 @@ int MainFrame::find_blobs(cv::Mat &img, vector<vector<cv::Point>>& contours)
 			continue;			
 		}
 	}
-	cv::drawContours(img_input, contours, -1, cv::Scalar(0,255,0), 2 );	
+	cv::drawContours(img_input, contours, -1, cv::Scalar(0,255,0), 2);	
 	int numCont = contours.size();
 	wxString str;
 	str.Printf("CC %d", numCont);
@@ -323,18 +398,17 @@ int MainFrame::find_blobs(cv::Mat &img, vector<vector<cv::Point>>& contours)
 }
 void MainFrame::draw_grid(cv::Mat &img)
 {
-	m_num_grid = 9;
-	int xgap = m_nWidth / m_num_grid ;
-	int ygap = m_nHeight / m_num_grid ;
+
+
 	char  box_text[10];
 	for(int i=0; i<m_num_grid; i++) {
-		cv::line(img, cv::Point(xgap * i, 0), cv::Point(xgap * i, m_nHeight), cv::Scalar(0, 255, 255), 1);
-		cv::line(img, cv::Point(0, ygap * i), cv::Point(m_nWidth, ygap * i), cv::Scalar(0, 255, 255), 1);
+		cv::line(img, cv::Point(m_xgap * i, 0), cv::Point(m_xgap * i, m_nHeight), cv::Scalar(0, 255, 255), 1);
+		cv::line(img, cv::Point(0, m_ygap * i), cv::Point(m_nWidth, m_ygap * i), cv::Scalar(0, 255, 255), 1);
 		
 		sprintf(box_text, "%d", i);
-		cv::putText(img, box_text, cv::Point(xgap * i+30, 20), cv::FONT_HERSHEY_DUPLEX, 0.6, CV_RGB(0,255,0), 1.0);
+		cv::putText(img, box_text, cv::Point(m_xgap * i+30, 20), cv::FONT_HERSHEY_DUPLEX, 0.6, CV_RGB(0,255,0), 1.0);
 		sprintf(box_text, "%c", i+'A');
-		cv::putText(img, box_text, cv::Point(10, ygap * i+30), cv::FONT_HERSHEY_DUPLEX, 0.6, CV_RGB(0,255,0), 1.0);		
+		cv::putText(img, box_text, cv::Point(10, m_ygap * i+30), cv::FONT_HERSHEY_DUPLEX, 0.6, CV_RGB(0,255,0), 1.0);		
 	}	
 }
 void MainFrame::OnClose(wxCloseEvent& event)

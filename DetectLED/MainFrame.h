@@ -27,6 +27,16 @@ public:
 		willRemove = false;
 		bOn = false;
 		id = ++blob_id;
+		detect_color();
+	}
+	void detect_color() {
+		int diff_cyan = abs(hue-180);
+		int diff_red = abs(hue - 360);
+		int diff_red1 = abs(hue);
+		if(diff_cyan < diff_red && diff_cyan < diff_red1)
+			color = "blue";
+		else 
+			color = "red";
 	}
 	int id;
 	cv::Point coord;
@@ -34,6 +44,8 @@ public:
 	int counter;
 	bool willRemove;
 	bool bOn;
+	string color;
+	string position;
 };
 
 class MainFrame : public MainFrameBaseClass
@@ -60,6 +72,7 @@ public:
 	int  find_blobs(cv::Mat &img, vector<vector<cv::Point>>& contours);
 	void identify_blobs(vector<vector<cv::Point>>&contours, cv::Mat &hue);
 	void remove_blobs();
+	int  get_hue(cv::Mat &hue, vector<vector<cv::Point>>& contours, int idx);
 
 
 	vector<Blob>  m_vBlob;
@@ -71,6 +84,11 @@ public:
 	int		m_nHeight;
 	double  m_fps;
 	int 	m_num_grid;
+	int 	m_xgap ;
+	int 	m_ygap ;
+	
+	std::vector<float> m_kernel;
+	int	m_nKnlBW;
 	
     void OnExit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
